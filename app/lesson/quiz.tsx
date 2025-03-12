@@ -7,6 +7,8 @@ import { Footer } from "./footer";
 import { upsertChallengeProgress } from "@/actions/challenge-progress";
 import { toast } from "sonner";
 import { challengeOptions, challenges, userSubscription } from "@/db/schema";
+import { reduceHearts } from "@/actions/user-progress";
+import { useAudio } from "react-use";
 
 type Props = {
   initialPercentage: number;
@@ -30,6 +32,18 @@ export const Quiz = ({
   initialLessonChallenges,
   userSubscription,
 }: Props) => {
+  const [finishAudio] = useAudio({ src: "/audios/finish.mp3", autoPlay: true });
+  const [
+    correctAudio,
+    _c,
+    correctControls,
+  ] = useAudio({ src: "/audios/correct.wav" });
+  const [
+    incorrectAudio,
+    _i,
+    incorrectControls,
+  ] = useAudio({ src: "/audios/incorrect.wav" });
+  
   const [pending, startTransition] = useTransition();
   const [hearts, setHearts] = useState(initialHearts);
   const [percentage, setPercentage] = useState(initialPercentage);
@@ -88,7 +102,7 @@ export const Quiz = ({
               return;
             }
 
-            // correctControls.play();
+            correctControls.play();
             setStatus("correct");
             setPercentage((prev) => prev + 100 / challenges.length);
 
@@ -100,6 +114,23 @@ export const Quiz = ({
           .catch(() => toast.error("Something went wrong. Please try again."))
       });
     } else {
+      startTransition(() => {
+        reduceHearts(challenge.id)
+          .then((response) => {
+            if (response?.error === "hearts") {
+              // openHeartsModal();
+              return;
+            }
+
+            incorrectControls.play();
+            setStatus("wrong");
+
+            if (!response?.error) {
+              setHearts((prev) => Math.max(prev - 1, 0));
+            }
+          })
+          .catch(() => toast.error("Something went wrong. Please try again."))
+      });
     }
   };
 

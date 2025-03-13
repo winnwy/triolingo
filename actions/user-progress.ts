@@ -1,38 +1,45 @@
 "use server";
+
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import db from "@/db/drizzle";
-import { getCourseById, getUserProgress } from "@/db/queries";
-import { challengeProgress, challenges, userProgress } from "@/db/schema";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { POINTS_TO_REFILL } from "@/constants";
+import {
+  getCourseById,
+  getUserProgress,
+  getUserSubscription,
+} from "@/db/queries";
+import { challengeProgress, challenges, userProgress } from "@/db/schema";
 
 export const upsertUserProgress = async (courseId: number) => {
   const { userId } = await auth();
   const user = await currentUser();
 
-  if (!userId || !user) throw new Error("Unauthorized.");
+  if (!userId || !user) {
+    throw new Error("Unauthorized");
+  }
 
   const course = await getCourseById(courseId);
 
-  if (!course) throw new Error("Course not found.");
+  if (!course) {
+    throw new Error("Course not found");
+  }
 
-    // if (!course.units.length || !course.units[0].lessons.length)
-    //   throw new Error("Course is empty.");
+  if (!course.units.length || !course.units[0].lessons.length) {
+    throw new Error("Course is empty");
+  }
 
   const existingUserProgress = await getUserProgress();
 
   if (existingUserProgress) {
-    await db
-      .update(userProgress)
-      .set({
-        activeCourseId: courseId,
-        userName: user.firstName || "User",
-        userImageSrc: user.imageUrl || "/images/mascot.svg",
-      })
-      .where(eq(userProgress.userId, userId));
+    await db.update(userProgress).set({
+      activeCourseId: courseId,
+      userName: user.firstName || "User",
+      userImageSrc: user.imageUrl || "/mascot.svg",
+    });
 
     revalidatePath("/courses");
     revalidatePath("/learn");
@@ -43,7 +50,7 @@ export const upsertUserProgress = async (courseId: number) => {
     userId,
     activeCourseId: courseId,
     userName: user.firstName || "User",
-    userImageSrc: user.imageUrl || "/images/mascot.svg",
+    userImageSrc: user.imageUrl || "/mascot.svg",
   });
 
   revalidatePath("/courses");
@@ -59,6 +66,7 @@ export const reduceHearts = async (challengeId: number) => {
   }
 
   const currentUserProgress = await getUserProgress();
+  const userSubscription = await getUserSubscription();
 
   const challenge = await db.query.challenges.findFirst({
     where: eq(challenges.id, challengeId),
@@ -85,6 +93,10 @@ export const reduceHearts = async (challengeId: number) => {
 
   if (!currentUserProgress) {
     throw new Error("User progress not found");
+  }
+
+  if (userSubscription?.isActive) {
+    return { error: "subscription" };
   }
 
   if (currentUserProgress.hearts === 0) {

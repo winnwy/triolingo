@@ -3,6 +3,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type Props = {
   onCheck: () => void;
@@ -19,6 +20,8 @@ export const Footer = ({
 }: Props) => {
   useKey("Enter", onCheck, {}, [onCheck]);
   const isMobile = useMedia("(max-width: 1024px)");
+  const router = useRouter();
+
 
   return (
     <footer className={cn(
@@ -43,7 +46,7 @@ export const Footer = ({
           <Button
             variant="default"
             size={isMobile ? "sm" : "lg"}
-            onClick={() => window.location.href = `/lesson/${lessonId}`}
+            onClick={() => router.push(`/lesson/${lessonId}`)}
           >
             Practice again
           </Button>

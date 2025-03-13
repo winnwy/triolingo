@@ -13,6 +13,7 @@ import Image from "next/image";
 import { ResultCard } from "./result-card";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
+import { useHeartsModal } from "@/store/use-hearts-modal";
 
 type Props = {
   initialPercentage: number;
@@ -36,20 +37,17 @@ export const Quiz = ({
   initialLessonChallenges,
   userSubscription,
 }: Props) => {
-  const {width, height} = useWindowSize();
+  const { open: openHeartsModal } = useHeartsModal();
+  const { width, height } = useWindowSize();
   const router = useRouter();
   const [finishAudio] = useAudio({ src: "/audios/finish.mp3", autoPlay: true });
-  const [
-    correctAudio,
-    _c,
-    correctControls,
-  ] = useAudio({ src: "/audios/correct.wav" });
-  const [
-    incorrectAudio,
-    _i,
-    incorrectControls,
-  ] = useAudio({ src: "/audios/incorrect.wav" });
-  
+  const [correctAudio, _c, correctControls] = useAudio({
+    src: "/audios/correct.wav",
+  });
+  const [incorrectAudio, _i, incorrectControls] = useAudio({
+    src: "/audios/incorrect.wav",
+  });
+
   const [pending, startTransition] = useTransition();
   const [lessonId] = useState(initialLessonId);
   const [hearts, setHearts] = useState(initialHearts);
@@ -68,9 +66,9 @@ export const Quiz = ({
   const challenge = challenges[activeIndex];
   const options = challenge?.challengeOptions ?? [];
 
-    const onNext = () => {
+  const onNext = () => {
     setActiveIndex((current) => current + 1);
-  }; 
+  };
 
   const onSelect = (id: number) => {
     if (status !== "none") return;
@@ -93,7 +91,7 @@ export const Quiz = ({
       setSelectedOption(undefined);
       return;
     }
-    
+
     const correctOption = options.find((option) => option.correct);
 
     if (!correctOption) {
@@ -104,8 +102,8 @@ export const Quiz = ({
       startTransition(() => {
         upsertChallengeProgress(challenge.id)
           .then((response) => {
-            if (response?.error === "hearts") {
-              // openHeartsModal();
+            if (response?.error === "hearts") { 
+              openHeartsModal();
               return;
             }
 
@@ -118,14 +116,14 @@ export const Quiz = ({
               setHearts((prev) => Math.min(prev + 1, 5));
             }
           })
-          .catch(() => toast.error("Something went wrong. Please try again."))
+          .catch(() => toast.error("Something went wrong. Please try again."));
       });
     } else {
       startTransition(() => {
         reduceHearts(challenge.id)
           .then((response) => {
             if (response?.error === "hearts") {
-              // openHeartsModal();
+              openHeartsModal();
               return;
             }
 
@@ -136,11 +134,11 @@ export const Quiz = ({
               setHearts((prev) => Math.max(prev - 1, 0));
             }
           })
-          .catch(() => toast.error("Something went wrong. Please try again."))
+          .catch(() => toast.error("Something went wrong. Please try again."));
       });
     }
   };
-  
+
   if (!challenge) {
     return (
       <>
@@ -171,14 +169,8 @@ export const Quiz = ({
             Great job! <br /> You&apos;ve completed the lesson.
           </h1>
           <div className="flex items-center gap-x-4 w-full">
-            <ResultCard
-              variant="points"
-              value={challenges.length * 10}
-            />
-            <ResultCard
-              variant="hearts"
-              value={hearts}
-            />
+            <ResultCard variant="points" value={challenges.length * 10} />
+            <ResultCard variant="hearts" value={hearts} />
           </div>
         </div>
         <Footer
